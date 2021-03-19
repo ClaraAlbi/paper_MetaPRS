@@ -1,5 +1,3 @@
-
-
 library(tidyverse)
 library(bigsnpr)
 library(glue)
@@ -23,17 +21,11 @@ prs_sims <- sims %>%
   # separate ct and ldpred scores
   mutate(across(contains("ldpred"), ~map(.x, ~.x[,15:ncol(.x)]), .names = "ld_{.col}")) %>%
   mutate(across(starts_with("prs_ldpred"), ~map(.x, ~.x[,1:14]), .names = "ct_{.col}")) %>%
-  # flip ldpred scores that are inverted
-  mutate(across(contains("ld_prs_ldpred"), ~map2(.x, phen.val, function(prs, y) {
-    c <- sign(cor(prs[1:2500,], y))
-    prs * diag(c)
-  }))) %>%
   select(-prs_ldpred_meta, -prs_ldpred_ext, -prs_ldpred_int)
 
 pred <- prs_sims %>% 
   pivot_longer(contains("ldpred"), names_to = c("method_ss", ".value"),
                names_pattern = "(.+)_(prs_ldpred_.+)") %>%
-  #mutate(across(contains("ldpred"), ~map2_dbl(.x, phen.val, ~which.max(cor(.y, .x[1:2500,])^2)), .names = "max_{.col}")) #%>%
   mutate(max_ldpred_ext = map2_dbl(prs_ldpred_ext, phen.val, ~which.max(cor(.y, .x[1:2500,])^2)),
          max_ldpred_meta = map2_dbl(prs_ldpred_meta, phen.val, ~which.max(cor(.y, .x[1:2500,])^2)),
          max_ldpred_int = map2_dbl(prs_ldpred_int, phen.val, ~which.max(cor(.y, .x[1:2500,])^2)),
@@ -63,43 +55,4 @@ pred <- prs_sims %>%
   mutate(method_ss = case_when(!method %in% c("bolt","sct") ~ method_ss, TRUE ~ NA_character_))
   
 #saveRDS(pred, "results/prediction_sims.rds")
-
-
-sims_large <- 
-readRDS("exports/export_1/pred_sims_boot.rds") %>%
-  mutate(p = as.numeric(str_remove(causal, "k"))) %>% filter(p > 1) %>% filter(group == "1:9" & p == 10)
-  
-  
-
-pred %>%
-  #filter(method_ss != "ct" & !is.na(method_ss)) %>%
-  #filter(!method %in% c("bolt", "ldpred")) %>%
-  #mutate(sub = case_when(sub == "ext" ~ NA_character_,
-  #                       TRUE ~ sub)) %>%
-  unite(c(method, sub, method_ss), sep = ".", col =  "method", na.rm = TRUE) %>%
-  unite(c(part_ss, part_ind), col = "ss_ind") %>%
-  ggplot(aes( x = reorder(ss_ind, desc(ss_ind)), y = mean, fill = method)) +
-  #geom_col(position = "dodge") +
-  geom_col(position = position_dodge2(width = 0.9, preserve = "single"), color = "black") +
-  geom_linerange(aes(ymin = mean - 2 * sd, ymax = mean + 2 * sd),
-                 position = position_dodge2(width = 0.9, preserve = "single"), color = "black") +
-  facet_grid(rg~p, scales = "free") +
-  xlab("ss_ind") +
-  ggtitle("Simulations 50k individuals")
-
-
-pred %>%
-  filter(sub == "int" | is.na(sub)) %>%
-  filter(method %in% c("bolt", "ldpred")) %>%
-  #mutate(s = as.character(case_when(method == "bolt" ~ part_ind,
-  #                     method == "ldpred" ~ part_ss))) %>% 
-  unite(c(part_ss, part_ind), col = "ss_ind") %>%
-  unite(c(method, method_ss), sep = ".", col =  "method", na.rm = TRUE) %>%
-  ggplot(aes(x = ss_ind, y = mean, fill = method)) +
-  geom_col(position = position_dodge2(width = 0.9)) +
-  geom_linerange(position = position_dodge2(width = 0.9),
-                 aes(ymin = mean - 2 * sd, ymax = mean + 2 * sd),
-                 color = "black") +
-  facet_grid(rg~p, scales = "free") +
-  ggtitle("Simulations 50k individuals")
 
