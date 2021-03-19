@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+paper_MetaPRS.Rproj
+paper_metaprs.Rmd
+data
+.DS_Store
+sections
+lua-filters-master
